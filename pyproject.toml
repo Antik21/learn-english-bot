@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "learn-english-bot"
+version = "0.1.0"
+description = "Telegram bot for learning English"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3,<4",
+    "aiosqlite>=0.20,<1",
+    "alembic>=1,<2",
+    "pydantic-settings>=2,<3",
+    "python-dotenv>=1,<2",
+    "SQLAlchemy>=2,<3",
+    "tenacity>=8,<10",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1,<2",
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.23,<1",
+    "ruff>=0.8,<1",
+]
+
+[project.scripts]
+learn-english-bot = "learn_english_bot.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
