@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-
 LANGUAGES_PAGE_SIZE = 5
 
 

@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from learn_english_bot.db.models import UserFlow
 
-
 ACTIVE = "active"
 COMPLETED = "completed"
 

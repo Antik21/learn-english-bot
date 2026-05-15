@@ -1,63 +1,86 @@
-from aiogram import Router
+from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from learn_english_bot.features.onboarding.callbacks import (
-    LanguageCallback,
-    LanguagePageCallback,
+    LANGUAGE_CALLBACK_PREFIX,
+    LANGUAGE_PAGE_CALLBACK_PREFIX,
+    parse_language_callback,
+    parse_language_page_callback,
 )
 from learn_english_bot.features.onboarding.flow import ONBOARDING_FLOW, OnboardingFlow
+from learn_english_bot.messengers.telegram.adapter import (
+    TelegramMessengerClient,
+    callback_to_context,
+)
 from learn_english_bot.repositories.flows import FlowRepository
 from learn_english_bot.repositories.users import UserRepository
 
 router = Router(name="onboarding")
 
+START_REQUIRED_MESSAGE = "Отправьте /start, чтобы начать."
 
-@router.callback_query(LanguagePageCallback.filter())
+
+@router.callback_query(F.data.startswith(LANGUAGE_PAGE_CALLBACK_PREFIX))
 async def handle_language_page(
     callback: CallbackQuery,
-    callback_data: LanguagePageCallback,
     session: AsyncSession,
+    bot: Bot,
 ) -> None:
-    if callback.from_user is None:
+    page = parse_language_page_callback(callback.data)
+    if page is None:
         await callback.answer()
         return
 
-    users = UserRepository(session)
-    user = await users.get_by_telegram_id(callback.from_user.id)
+    context = callback_to_context(callback)
+    if context is None:
+        await callback.answer(START_REQUIRED_MESSAGE, show_alert=True)
+        return
+
+    user = await UserRepository(session).get_by_telegram_id(callback.from_user.id)
     if user is None:
-        await callback.answer("Отправьте /start, чтобы начать.", show_alert=True)
+        await callback.answer(START_REQUIRED_MESSAGE, show_alert=True)
         return
 
-    flows = FlowRepository(session)
-    flow = await flows.get_active(user_id=user.id, flow_name=ONBOARDING_FLOW)
+    flow = await FlowRepository(session).get_active(user_id=user.id, flow_name=ONBOARDING_FLOW)
     if flow is None:
-        await callback.answer("Отправьте /start, чтобы начать.", show_alert=True)
+        await callback.answer(START_REQUIRED_MESSAGE, show_alert=True)
         return
 
-    await OnboardingFlow(session).show_language_page(callback, flow, callback_data.page)
+    actions = await OnboardingFlow(session).show_language_page(context, flow, page)
+    await TelegramMessengerClient(bot).execute(actions)
 
 
-@router.callback_query(LanguageCallback.filter())
+@router.callback_query(F.data.startswith(LANGUAGE_CALLBACK_PREFIX))
 async def handle_language_selected(
     callback: CallbackQuery,
-    callback_data: LanguageCallback,
     session: AsyncSession,
+    bot: Bot,
 ) -> None:
-    if callback.from_user is None:
+    language_code = parse_language_callback(callback.data)
+    if language_code is None:
         await callback.answer()
         return
 
-    users = UserRepository(session)
-    user = await users.get_by_telegram_id(callback.from_user.id)
+    context = callback_to_context(callback)
+    if context is None:
+        await callback.answer(START_REQUIRED_MESSAGE, show_alert=True)
+        return
+
+    user = await UserRepository(session).get_by_telegram_id(callback.from_user.id)
     if user is None:
-        await callback.answer("Отправьте /start, чтобы начать.", show_alert=True)
+        await callback.answer(START_REQUIRED_MESSAGE, show_alert=True)
         return
 
-    flows = FlowRepository(session)
-    flow = await flows.get_active(user_id=user.id, flow_name=ONBOARDING_FLOW)
+    flow = await FlowRepository(session).get_active(user_id=user.id, flow_name=ONBOARDING_FLOW)
     if flow is None:
-        await callback.answer("Отправьте /start, чтобы начать.", show_alert=True)
+        await callback.answer(START_REQUIRED_MESSAGE, show_alert=True)
         return
 
-    await OnboardingFlow(session).select_language(callback, user, flow, callback_data.code)
+    actions = await OnboardingFlow(session).select_language(
+        context,
+        user,
+        flow,
+        language_code,
+    )
+    await TelegramMessengerClient(bot).execute(actions)
